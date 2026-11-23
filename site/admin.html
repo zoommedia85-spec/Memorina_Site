@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; object-src 'none'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<title>لوحة تحكم Memorina</title>
+<style>
+
+:root{
+  --sage: #5B9887; --sage-dark: #3E7367; --teal-deep: #2C463F;
+  --cream: #FBF6EE; --blush: #EFD9D2; --coral: #E2937F; --white: #fff;
+  --danger: #c0533f; --danger-bg: #fbe9e5;
+}
+*{ box-sizing:border-box; }
+body{
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  background: var(--cream); color: var(--teal-deep); margin:0;
+}
+header{
+  background: linear-gradient(135deg, var(--sage) 0%, var(--sage-dark) 100%);
+  color: var(--cream); padding: 18px 24px; display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:50; box-shadow:0 4px 14px rgba(0,0,0,.12);
+}
+header h1{ font-size:1.25rem; margin:0; }
+header .status{ font-size:0.82rem; opacity:.9; }
+
+.layout{ max-width:1100px; margin:0 auto; padding:24px; }
+
+.card{ background:#fff; border-radius:14px; padding:20px; margin-bottom:20px; box-shadow:0 2px 10px rgba(0,0,0,.05); border:1px solid #eee2d4; }
+.card h2{ font-size:1.05rem; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+.card h2 .badge{ background:var(--coral); color:#fff; font-size:0.7rem; padding:3px 9px; border-radius:20px; font-weight:600; }
+
+.dropzone{
+  border:2px dashed var(--sage); border-radius:12px; padding:30px 20px; text-align:center;
+  cursor:pointer; background:var(--blush); transition: background .2s ease;
+}
+.dropzone:hover{ background:#f3e2d8; }
+.dropzone input{ display:none; }
+.dropzone p{ margin:0; font-size:0.92rem; color:var(--sage-dark); font-weight:600; }
+.dropzone small{ color:#7a8f89; }
+
+.tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+.tab-btn{
+  background:#fff; border:1.5px solid var(--sage); color:var(--sage-dark);
+  padding:9px 18px; border-radius:30px; font-weight:700; cursor:pointer; font-size:0.9rem;
+}
+.tab-btn.active{ background:var(--sage-dark); color:#fff; border-color:var(--sage-dark); }
+.tab-panel{ display:none; }
+.tab-panel.active{ display:block; }
+
+.item-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:var(--cream); border:1px solid #eee2d4; border-radius:10px; padding:12px 16px; margin-bottom:8px;
+}
+.item-row .info{ flex:1; min-width:0; }
+.item-row .info b{ display:block; font-size:0.95rem; }
+.item-row .info span{ font-size:0.8rem; color:#7a8f89; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.item-row .actions{ display:flex; gap:6px; flex-shrink:0; }
+
+button{ font-family:inherit; cursor:pointer; border:none; }
+.btn{ padding:8px 16px; border-radius:8px; font-weight:700; font-size:0.85rem; }
+.btn-primary{ background:var(--sage-dark); color:#fff; }
+.btn-primary:hover{ background:var(--teal-deep); }
+.btn-outline{ background:#fff; border:1.5px solid var(--sage-dark); color:var(--sage-dark); }
+.btn-danger{ background:var(--danger-bg); color:var(--danger); }
+.btn-danger:hover{ background:#f7d9d1; }
+.btn-sm{ padding:6px 11px; font-size:0.78rem; }
+.btn-add{ background:var(--coral); color:#fff; padding:10px 20px; border-radius:30px; font-weight:800; }
+
+.form-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px; }
+.form-grid.single{ grid-template-columns: 1fr; }
+.field{ display:flex; flex-direction:column; gap:5px; }
+.field label{ font-size:0.8rem; font-weight:700; color:var(--sage-dark); }
+.field input, .field select, .field textarea{
+  padding:10px 12px; border-radius:8px; border:1.5px solid #e5ded3; font-size:0.9rem;
+  background:var(--cream); font-family:inherit; color:var(--teal-deep);
+}
+.field textarea{ resize:vertical; min-height:60px; }
+.field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--sage); }
+.field.full{ grid-column: 1 / -1; }
+
+.editor-box{ background:var(--cream); border:1px dashed var(--sage); border-radius:12px; padding:16px; margin-top:14px; display:none; }
+.editor-box.open{ display:block; }
+.editor-box h3{ margin:0 0 10px; font-size:0.95rem; }
+
+.pricing-switch{ display:flex; gap:8px; margin:10px 0; }
+.pricing-switch button{
+  flex:1; padding:9px; border-radius:8px; border:1.5px solid var(--sage); background:#fff; color:var(--sage-dark); font-weight:700; font-size:0.82rem;
+}
+.pricing-switch button.active{ background:var(--sage-dark); color:#fff; }
+.pricing-panel{ display:none; margin-top:10px; }
+.pricing-panel.active{ display:block; }
+
+.tier-row, .size-row{ display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+.tier-row input, .size-row input{ flex:1; padding:8px 10px; border-radius:7px; border:1.5px solid #e5ded3; font-size:0.85rem; background:#fff; }
+
+.img-thumbs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.img-thumb{ position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden; border:1px solid #e5ded3; }
+.img-thumb img{ width:100%; height:100%; object-fit:cover; }
+.img-thumb button{
+  position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%;
+  background:rgba(192,83,63,.9); color:#fff; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center;
+}
+
+.hint{ font-size:0.78rem; color:#7a8f89; margin-top:4px; }
+.empty-msg{ text-align:center; padding:24px; color:#9aa; font-size:0.9rem; }
+
+.shipping-table{ width:100%; border-collapse:collapse; font-size:0.88rem; }
+.shipping-table th{ background:var(--sage-dark); color:#fff; padding:8px; text-align:right; }
+.shipping-table td{ padding:6px 8px; border-bottom:1px solid #eee2d4; }
+.shipping-table input{ width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e5ded3; font-size:0.85rem; }
+
+.export-bar{
+  position:sticky; bottom:0; background:#fff; border-top:2px solid var(--sage); padding:16px 24px;
+  display:flex; justify-content:center; gap:14px; box-shadow: 0 -4px 14px rgba(0,0,0,.06);
+}
+.toast{
+  position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+  background:var(--teal-deep); color:#fff; padding:12px 22px; border-radius:30px; font-size:0.88rem;
+  opacity:0; pointer-events:none; transition:opacity .3s ease; z-index:100;
+}
+.toast.show{ opacity:1; }
+
+@media (max-width:640px){
+  .form-grid{ grid-template-columns:1fr; }
+}
+
+.auth-wrap{ max-width:420px; margin:40px auto; }
+.auth-wrap .field{ margin-bottom:12px; }
+.auth-wrap .btn{ width:100%; padding:11px; }
+.error-text{ color:var(--danger); font-size:0.85rem; min-height:1.2em; margin:8px 0 0; }
+.qr-box{ text-align:center; margin:12px 0; }
+.qr-box img{ width:180px; height:180px; background:#fff; padding:8px; border-radius:10px; border:1px solid #eee2d4; }
+.secret{ direction:ltr; font-family:monospace; font-size:0.85rem; background:var(--cream); padding:8px; border-radius:8px; word-break:break-all; text-align:center; }
+.check-row{ display:flex; align-items:center; gap:8px; margin-top:12px; font-size:0.88rem; font-weight:700; color:var(--sage-dark); }
+.check-row input{ width:18px; height:18px; }
+.tag{ display:inline-block; font-size:0.7rem; padding:2px 8px; border-radius:20px; background:var(--blush); color:var(--teal-deep); margin-inline-start:6px; font-weight:700; }
+.tag.off{ background:#e7e7e7; }
+.order{ align-items:flex-start; flex-direction:column; }
+.order-head{ display:flex; justify-content:space-between; gap:10px; width:100%; flex-wrap:wrap; align-items:center; }
+.order ul{ margin:8px 0; padding-inline-start:18px; font-size:0.85rem; }
+.order .meta{ font-size:0.82rem; color:#5b6f6a; line-height:1.8; }
+.order .row{ display:flex; gap:8px; flex-wrap:wrap; width:100%; margin-top:8px; align-items:center; }
+.order select, .order input[type=text]{ padding:7px 10px; border-radius:8px; border:1.5px solid #e5ded3; font-family:inherit; background:#fff; }
+.order input[type=text]{ flex:1; min-width:160px; }
+.toolbar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+.toolbar select{ padding:8px 12px; border-radius:8px; border:1.5px solid #e5ded3; font-family:inherit; }
+.img-thumbs.big .img-thumb{ width:90px; height:112px; }
+.hidden{ display:none !important; }
+header button.btn{ background:rgba(255,255,255,.18); color:#fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛠️ لوحة تحكم Memorina</h1>
+  <div>
+    <span class="status" id="statusText"></span>
+    <button class="btn hidden" id="logoutBtn" type="button">تسجيل الخروج</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <div class="card auth-wrap" id="loginView">
+    <h2>تسجيل الدخول</h2>
+    <form id="loginForm" autocomplete="on">
+      <div class="field"><label for="loginEmail">الإيميل</label><input id="loginEmail" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="loginPassword">كلمة السر</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary" type="submit">دخول</button>
+      <p class="error-text" id="loginError"></p>
+    </form>
+  </div>
+
+  <div class="card auth-wrap hidden" id="mfaView">
+    <h2>التحقق بخطوتين</h2>
+    <div id="mfaVerifyBox" class="hidden">
+      <p class="hint">اكتب الكود المكوّن من 6 أرقام من تطبيق المصادقة (Google Authenticator أو أي تطبيق مشابه).</p>
+      <form id="mfaVerifyForm">
+        <div class="field"><label for="mfaCode">الكود</label><input id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></div>
+        <button class="btn btn-primary" type="submit">تأكيد</button>
+      </form>
+    </div>
+    <div id="mfaEnrollBox" class="hidden">
+      <p class="hint">لازم تفعّل التحقق بخطوتين قبل ما تدخل. امسح الكود ده بتطبيق المصادقة، وبعدها اكتب الكود اللي هيظهرلك.</p>
+      <div class="qr-box"><img id="mfaQr" alt="QR"></div>
+      <div class="secret" id="mfaSecret"></div>
+      <form id="mfaEnrollForm" style="margin-top:12px;">
+        <div class="field"><label for="mfaEnrollCode">الكود</label><input id="mfaEnrollCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></div>
+        <button class="btn btn-primary" type="submit">تفعيل ودخول</button>
+      </form>
+    </div>
+    <p class="error-text" id="mfaError"></p>
+  </div>
+
+  <div id="app" class="hidden">
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="orders">الطلبات <span class="badge" id="newOrdersBadge">0</span></button>
+      <button class="tab-btn" data-tab="collections">الكوليكشنز</button>
+      <button class="tab-btn" data-tab="products">المنتجات</button>
+      <button class="tab-btn" data-tab="shipping">الشحن</button>
+      <button class="tab-btn" data-tab="reviews">آراء العملاء</button>
+      <button class="tab-btn" data-tab="settings">إعدادات عامة</button>
+      <button class="tab-btn" data-tab="import">استيراد</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-orders">
+      <div class="card">
+        <h2>الطلبات <span class="badge" id="ordersCount">0</span></h2>
+        <div class="toolbar">
+          <select id="orderFilter">
+            <option value="">كل الحالات</option>
+            <option value="new">جديد</option>
+            <option value="confirmed">مؤكد</option>
+            <option value="in_progress">تحت التنفيذ</option>
+            <option value="shipped">اتشحن</option>
+            <option value="delivered">اتسلّم</option>
+            <option value="cancelled">ملغي</option>
+          </select>
+          <button class="btn btn-outline" type="button" data-action="orders-refresh">تحديث</button>
+          <button class="btn btn-outline" type="button" data-action="orders-export">تصدير CSV</button>
+        </div>
+        <div id="ordersList"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-collections">
+      <div class="card">
+        <h2>الكوليكشنز <span class="badge" id="collectionsCount">0</span></h2>
+        <div id="collectionsList"></div>
+        <button class="btn btn-add" type="button" data-action="collection-new">+ ضيف كوليكشن جديد</button>
+        <div class="editor-box" id="collectionEditorBox">
+          <h3 id="collectionEditorTitle">كوليكشن جديد</h3>
+          <div class="form-grid">
+            <div class="field"><label>الاسم</label><input id="colName" maxlength="80"></div>
+            <div class="field"><label>أيقونة مؤقتة</label>
+              <select id="colIcon">
+                <option value="frame">فريم</option>
+                <option value="medal">ميدالية</option>
+                <option value="notebook">نوت بوك</option>
+                <option value="glasses">نظارة</option>
+                <option value="cane">استيك</option>
+                <option value="gift">هدية</option>
+              </select>
+            </div>
+            <div class="field full"><label>الوصف</label><textarea id="colDesc" maxlength="400"></textarea></div>
+            <div class="field full">
+              <label>صورة الغلاف</label>
+              <div class="dropzone" style="padding:14px;" data-action="pick-file" data-target="colCoverInput">
+                <input type="file" id="colCoverInput" accept="image/*">
+                <p style="font-size:0.85rem;">دوس لرفع صورة</p>
+              </div>
+              <div class="img-thumbs" id="colCoverThumb"></div>
+            </div>
+          </div>
+          <label class="check-row"><input type="checkbox" id="colHidePrices"> إخفاء الأسعار في الكوليكشن كله (يظهر تحديد الكمية بس)</label>
+          <label class="check-row"><input type="checkbox" id="colActive" checked> ظاهر في الموقع</label>
+          <div style="margin-top:14px; display:flex; gap:10px;">
+            <button class="btn btn-primary" type="button" data-action="collection-save">حفظ الكوليكشن</button>
+            <button class="btn btn-outline" type="button" data-action="collection-cancel">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-products">
+      <div class="card">
+        <h2>المنتجات <span class="badge" id="productsCount">0</span></h2>
+        <div class="field" style="margin-bottom:14px; max-width:260px;">
+          <label>فلترة حسب الكوليكشن</label>
+          <select id="productFilterCollection"><option value="">كل الكوليكشنز</option></select>
+        </div>
+        <div id="productsList"></div>
+        <button class="btn btn-add" type="button" data-action="product-new">+ ضيف منتج جديد</button>
+
+        <div class="editor-box" id="productEditorBox">
+          <h3 id="productEditorTitle">منتج جديد</h3>
+          <div class="form-grid">
+            <div class="field"><label>الكوليكشن</label><select id="prodCollection"></select></div>
+            <div class="field"><label>أيقونة مؤقتة</label>
+              <select id="prodIcon">
+                <option value="frame">فريم</option>
+                <option value="medal">ميدالية</option>
+                <option value="notebook">نوت بوك</option>
+                <option value="glasses">نظارة</option>
+                <option value="cane">استيك</option>
+                <option value="gift">هدية</option>
+              </select>
+            </div>
+            <div class="field"><label>الاسم</label><input id="prodName" maxlength="120"></div>
+            <div class="field"><label>Ribbon فوق المنتج (اختياري)</label><input id="prodRibbonText" maxlength="30" placeholder="مثال: عرض خاص"></div>
+            <div class="field"><label>لون الـ Ribbon</label>
+              <select id="prodRibbonColor">
+                <option value="coral">مرجاني</option>
+                <option value="sage">أخضر</option>
+                <option value="gold">ذهبي</option>
+                <option value="dark">غامق</option>
+              </select>
+            </div>
+            <div class="field full"><label>الوصف</label><textarea id="prodDesc" maxlength="600"></textarea></div>
+          </div>
+
+          <div class="field full" style="margin-top:12px;">
+            <label>صور المنتج (تقدر ترفع أكتر من صورة)</label>
+            <div class="dropzone" style="padding:14px;" data-action="pick-file" data-target="prodImagesInput">
+              <input type="file" id="prodImagesInput" accept="image/*" multiple>
+              <p style="font-size:0.85rem;">دوس لرفع صور</p>
+            </div>
+            <div class="img-thumbs" id="prodImagesThumb"></div>
+          </div>
+
+          <h3 style="margin-top:18px;">طريقة التسعير</h3>
+          <div class="pricing-switch">
+            <button type="button" data-mode="fixed" class="active">سعر ثابت</button>
+            <button type="button" data-mode="sizes">أحجام مختلفة</button>
+            <button type="button" data-mode="tiers">كمية بالجملة</button>
+          </div>
+          <div class="pricing-panel active" id="panel-fixed">
+            <div class="field" style="max-width:220px;"><label>السعر</label><input type="number" id="prodPrice" min="0" step="0.01"></div>
+          </div>
+          <div class="pricing-panel" id="panel-sizes">
+            <div id="sizesRows"></div>
+            <button class="btn btn-outline btn-sm" type="button" data-action="size-add">+ ضيف حجم</button>
+          </div>
+          <div class="pricing-panel" id="panel-tiers">
+            <div class="hint" style="margin-bottom:8px;">كل فئة: أقل كمية، أقصى كمية (سيبها فاضية لو مفتوحة من غير حد أقصى)، وسعر القطعة.</div>
+            <div id="tiersRows"></div>
+            <button class="btn btn-outline btn-sm" type="button" data-action="tier-add">+ ضيف فئة</button>
+          </div>
+
+          <label class="check-row"><input type="checkbox" id="prodHidePrice"> إخفاء سعر المنتج (يظهر تحديد الكمية بس)</label>
+          <label class="check-row"><input type="checkbox" id="prodActive" checked> ظاهر في الموقع</label>
+
+          <div style="margin-top:16px; display:flex; gap:10px;">
+            <button class="btn btn-primary" type="button" data-action="product-save">حفظ المنتج</button>
+            <button class="btn btn-outline" type="button" data-action="product-cancel">إلغاء</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-shipping">
+      <div class="card">
+        <h2>أسعار الشحن <span class="badge" id="shippingCount">0</span></h2>
+        <table class="shipping-table">
+          <thead><tr><th>المحافظة / المنطقة</th><th style="width:120px;">السعر</th><th style="width:60px;"></th></tr></thead>
+          <tbody id="shippingRows"></tbody>
+        </table>
+        <div style="margin-top:12px; display:flex; gap:10px;">
+          <button class="btn btn-add" type="button" data-action="shipping-add">+ ضيف محافظة</button>
+          <button class="btn btn-primary" type="button" data-action="shipping-save">حفظ أسعار الشحن</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-reviews">
+      <div class="card">
+        <h2>صور آراء العملاء <span class="badge" id="reviewsCount">0</span></h2>
+        <div class="hint">المقاس الموصى بيه لكل صورة: 1080×1350 بكسل</div>
+        <div class="dropzone" style="margin-top:10px;" data-action="pick-file" data-target="reviewImagesInput">
+          <input type="file" id="reviewImagesInput" accept="image/*" multiple>
+          <p>دوس لرفع صور آراء العملاء</p>
+        </div>
+        <div class="img-thumbs big" id="reviewImagesThumb"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-settings">
+      <div class="card">
+        <h2>إعدادات عامة</h2>
+        <div class="form-grid">
+          <div class="field"><label>رقم الواتساب (بالكود الدولي)</label><input id="setWhatsapp" inputmode="numeric" maxlength="15"></div>
+          <div class="field"><label>لينك الإنستجرام</label><input id="setInstagram" dir="ltr"></div>
+          <div class="field"><label>رمز العملة</label><input id="setCurrency" maxlength="10"></div>
+          <div class="field"><label>لينك "See more clients reviews"</label><input id="setReviewsLink" dir="ltr"></div>
+        </div>
+        <div style="margin-top:14px;"><button class="btn btn-primary" type="button" data-action="settings-save">حفظ الإعدادات</button></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-import">
+      <div class="card">
+        <h2>استيراد بيانات الموقع القديم</h2>
+        <p class="hint">بينقل الكوليكشنز والمنتجات والصور وآراء العملاء من ملف <b>import-data.json</b> للداتابيز. الصور بتترفع لـ Storage. لو شغّلته مرتين، المنتجات والكوليكشنز بتتحدّث (مش بتتكرر)، لكن الصور بتترفع تاني.</p>
+        <div class="dropzone" style="margin-top:10px;" data-action="pick-file" data-target="importFileInput">
+          <input type="file" id="importFileInput" accept=".json,application/json">
+          <p id="importFileName">دوس واختار ملف import-data.json</p>
+        </div>
+        <div style="margin-top:14px;"><button class="btn btn-primary" type="button" data-action="import-start" id="importBtn">ابدأ الاستيراد</button></div>
+        <p class="hint" id="importStatus" style="margin-top:12px;"></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="admin.js" defer></script>
+</body>
+</html>

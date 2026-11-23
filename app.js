@@ -152,12 +152,10 @@
   }
 
   function renderReviews() {
-    const section = $('reviews');
     const urls = catalog.reviews.filter(isStorageUrl);
-    section.hidden = urls.length === 0;
-    $('reviewsWrap').innerHTML = urls.map((u) => `
+    $('reviewsWrap').innerHTML = urls.length ? urls.map((u) => `
       <div class="review-card" data-action="zoom"><img src="${esc(u)}" alt="رأي عميل" loading="lazy"></div>
-    `).join('');
+    `).join('') : '<div class="review-card">حطي صور آراء العملاء هنا<br>(1080×1350 بكسل)</div>';
   }
 
   function productCard(p, ctx) {

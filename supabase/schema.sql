@@ -115,7 +115,7 @@ begin
     new.quantity_tiers := null;
   end if;
 
-  if cardinality(new.images) > 10 then
+  if cardinality(new.images) > 20 then
     raise exception 'too many images';
   end if;
   foreach img in array new.images loop
@@ -596,53 +596,12 @@ create policy media_admin_delete on storage.objects
   for delete to authenticated using (bucket_id = 'media' and (select public.is_admin()));
 
 -- ---------------------------------------------------------------
--- البيانات الحالية للموقع
+-- الإعدادات العامة وأسعار الشحن
+-- (الكوليكشنز والمنتجات والصور بتتنقل من لوحة التحكم بأداة "استيراد")
 -- ---------------------------------------------------------------
 
 insert into public.settings (id, whatsapp_number, instagram_url, reviews_link_url, currency)
 values (1, '201212688897', 'https://www.instagram.com/memorina.ve?igsh=MXRjcHpmaW9xMnhxMQ==', 'https://instagram.com/memorina', 'ج.م');
-
-insert into public.collections (id, name, description, icon, sort_order) values
-  ('collection1', 'اسم الكوليكشن 1', 'وصف مختصر لهذا الكوليكشن، عدّليه براحتك', 'frame', 10),
-  ('collection2', 'اسم الكوليكشن 2', 'وصف مختصر لهذا الكوليكشن، عدّليه براحتك', 'medal', 20),
-  ('collection3', 'اسم الكوليكشن 3', 'وصف مختصر لهذا الكوليكشن، عدّليه براحتك', 'notebook', 30),
-  ('collection4', 'اسم الكوليكشن 4', 'وصف مختصر لهذا الكوليكشن، عدّليه براحتك', 'gift', 40);
-
-insert into public.products (id, collection_id, name, description, icon, price, sizes, quantity_tiers, sort_order) values
-  ('c1p1', 'collection1', 'منتج 1', 'وصف المنتج', 'frame', 100, null, null, 10),
-  ('c1p2', 'collection1', 'منتج 2', 'وصف المنتج', 'frame', 100, null, null, 20),
-  ('c1p3', 'collection1', 'منتج 3', 'وصف المنتج', 'frame', null, '[{"label": "صغير", "price": 90}, {"label": "كبير", "price": 130}]'::jsonb, null, 30),
-  ('c1p4', 'collection1', 'منتج 4', 'وصف المنتج', 'frame', 100, null, null, 40),
-  ('c1p5', 'collection1', 'منتج 5', 'وصف المنتج', 'frame', 100, null, null, 50),
-  ('c1p6', 'collection1', 'منتج 6', 'وصف المنتج', 'frame', 100, null, null, 60),
-  ('c1p7', 'collection1', 'منتج 7', 'وصف المنتج', 'frame', 100, null, null, 70),
-  ('c1p8', 'collection1', 'منتج 8', 'وصف المنتج', 'frame', 100, null, null, 80),
-  ('c1p9', 'collection1', 'منتج بالجملة', 'اختر الكمية اللي محتاجها من الفئة المناسبة', 'frame', null, null, '[{"min": 15, "max": 50, "rate": 20}, {"min": 50, "max": null, "rate": 15}]'::jsonb, 90),
-  ('c2p1', 'collection2', 'منتج 1', 'وصف المنتج', 'medal', 100, null, null, 100),
-  ('c2p2', 'collection2', 'منتج 2', 'وصف المنتج', 'medal', 100, null, null, 110),
-  ('c2p3', 'collection2', 'منتج 3', 'وصف المنتج', 'medal', null, '[{"label": "صغير", "price": 90}, {"label": "كبير", "price": 130}]'::jsonb, null, 120),
-  ('c2p4', 'collection2', 'منتج 4', 'وصف المنتج', 'medal', 100, null, null, 130),
-  ('c2p5', 'collection2', 'منتج 5', 'وصف المنتج', 'medal', 100, null, null, 140),
-  ('c2p6', 'collection2', 'منتج 6', 'وصف المنتج', 'medal', 100, null, null, 150),
-  ('c2p7', 'collection2', 'منتج 7', 'وصف المنتج', 'medal', 100, null, null, 160),
-  ('c2p8', 'collection2', 'منتج 8', 'وصف المنتج', 'medal', 100, null, null, 170),
-  ('c2p9', 'collection2', 'منتج بالجملة', 'اختر الكمية اللي محتاجها من الفئة المناسبة', 'medal', null, null, '[{"min": 15, "max": 50, "rate": 20}, {"min": 50, "max": 100, "rate": 18}, {"min": 100, "max": 200, "rate": 15}]'::jsonb, 180),
-  ('c3p1', 'collection3', 'منتج 1', 'وصف المنتج', 'notebook', 100, null, null, 190),
-  ('c3p2', 'collection3', 'منتج 2', 'وصف المنتج', 'notebook', 100, null, null, 200),
-  ('c3p3', 'collection3', 'منتج 3', 'وصف المنتج', 'notebook', null, '[{"label": "صغير", "price": 90}, {"label": "كبير", "price": 130}]'::jsonb, null, 210),
-  ('c3p4', 'collection3', 'منتج 4', 'وصف المنتج', 'notebook', 100, null, null, 220),
-  ('c3p5', 'collection3', 'منتج 5', 'وصف المنتج', 'notebook', 100, null, null, 230),
-  ('c3p6', 'collection3', 'منتج 6', 'وصف المنتج', 'notebook', 100, null, null, 240),
-  ('c3p7', 'collection3', 'منتج 7', 'وصف المنتج', 'notebook', 100, null, null, 250),
-  ('c3p8', 'collection3', 'منتج 8', 'وصف المنتج', 'notebook', 100, null, null, 260),
-  ('c4p1', 'collection4', 'منتج 1', 'وصف المنتج', 'gift', 100, null, null, 270),
-  ('c4p2', 'collection4', 'منتج 2', 'وصف المنتج', 'gift', 100, null, null, 280),
-  ('c4p3', 'collection4', 'منتج 3', 'وصف المنتج', 'gift', null, '[{"label": "صغير", "price": 90}, {"label": "كبير", "price": 130}]'::jsonb, null, 290),
-  ('c4p4', 'collection4', 'منتج 4', 'وصف المنتج', 'gift', 100, null, null, 300),
-  ('c4p5', 'collection4', 'منتج 5', 'وصف المنتج', 'gift', 100, null, null, 310),
-  ('c4p6', 'collection4', 'منتج 6', 'وصف المنتج', 'gift', 100, null, null, 320),
-  ('c4p7', 'collection4', 'منتج 7', 'وصف المنتج', 'gift', 100, null, null, 330),
-  ('c4p8', 'collection4', 'منتج 8', 'وصف المنتج', 'gift', 100, null, null, 340);
 
 insert into public.shipping_rates (name, price, sort_order) values
   ('القاهرة', 65, 10),
