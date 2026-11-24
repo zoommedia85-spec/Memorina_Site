@@ -205,6 +205,7 @@ header button.btn{ background:rgba(255,255,255,.18); color:#fff; }
       <button class="tab-btn" data-tab="shipping">الشحن</button>
       <button class="tab-btn" data-tab="reviews">آراء العملاء</button>
       <button class="tab-btn" data-tab="settings">إعدادات عامة</button>
+      <button class="tab-btn" data-tab="import">استيراد</button>
     </div>
 
     <div class="tab-panel active" id="tab-orders">
@@ -378,6 +379,19 @@ header button.btn{ background:rgba(255,255,255,.18); color:#fff; }
           <div class="field"><label>لينك "See more clients reviews"</label><input id="setReviewsLink" dir="ltr"></div>
         </div>
         <div style="margin-top:14px;"><button class="btn btn-primary" type="button" data-action="settings-save">حفظ الإعدادات</button></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-import">
+      <div class="card">
+        <h2>استيراد بيانات الموقع القديم</h2>
+        <p class="hint">بينقل الكوليكشنز والمنتجات والصور وآراء العملاء من ملف <b>import-data.json</b> للداتابيز. الصور بتترفع لـ Storage. لو شغّلته مرتين، المنتجات والكوليكشنز بتتحدّث (مش بتتكرر)، لكن الصور بتترفع تاني.</p>
+        <div class="dropzone" style="margin-top:10px;" data-action="pick-file" data-target="importFileInput">
+          <input type="file" id="importFileInput" accept=".json,application/json">
+          <p id="importFileName">دوس واختار ملف import-data.json</p>
+        </div>
+        <div style="margin-top:14px;"><button class="btn btn-primary" type="button" data-action="import-start" id="importBtn">ابدأ الاستيراد</button></div>
+        <p class="hint" id="importStatus" style="margin-top:12px;"></p>
       </div>
     </div>
 

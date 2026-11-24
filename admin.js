@@ -203,9 +203,7 @@
     });
   }
 
-  async function uploadImage(file, folder, maxSide = 1600) {
-    if (!file.type.startsWith('image/')) throw new Error('الملف لازم يكون صورة');
-    const blob = await compress(file, maxSide);
+  async function uploadBlob(blob, folder) {
     const path = `${folder}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.jpg`;
     const token = await freshToken();
     const res = await fetch(`${BASE}/storage/v1/object/media/${path}`, {
@@ -224,6 +222,11 @@
       throw new Error((data && data.message) || 'فشل رفع الصورة');
     }
     return `${BASE}/storage/v1/object/public/media/${path}`;
+  }
+
+  async function uploadImage(file, folder, maxSide = 1600) {
+    if (!file.type.startsWith('image/')) throw new Error('الملف لازم يكون صورة');
+    return uploadBlob(await compress(file, maxSide), folder);
   }
 
   async function removeStoredImage(url) {
@@ -690,6 +693,75 @@
     } catch (err) { fail(err); }
   }
 
+  /* ---------- import ---------- */
+
+  let importData = null;
+
+  function base64ToBlob(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: 'image/jpeg' });
+  }
+
+  async function runImport() {
+    if (!importData) { toast('اختار ملف الاستيراد الأول'); return; }
+    const status = $('importStatus');
+    const btn = $('importBtn');
+    const data = importData;
+    btn.disabled = true;
+    try {
+      const keys = Object.keys(data.files || {});
+      const urls = {};
+      for (let i = 0; i < keys.length; i++) {
+        status.textContent = `رفع الصور ${i + 1} من ${keys.length}...`;
+        urls[keys[i]] = await uploadBlob(base64ToBlob(data.files[keys[i]]), 'import');
+      }
+      const url = (key) => (key ? urls[key] || '' : '');
+
+      status.textContent = 'حفظ الكوليكشنز...';
+      await rest('POST', 'collections?on_conflict=id', {
+        prefer: 'resolution=merge-duplicates',
+        body: data.collections.map((c, i) => ({
+          id: c.id, name: c.name, description: c.desc || '', icon: c.icon,
+          cover_url: url(c.cover), sort_order: (i + 1) * 10
+        }))
+      });
+
+      status.textContent = 'حفظ المنتجات...';
+      await rest('POST', 'products?on_conflict=id', {
+        prefer: 'resolution=merge-duplicates',
+        body: data.products.map((p, i) => ({
+          id: p.id, collection_id: p.collectionId, name: p.name, description: p.desc || '', icon: p.icon,
+          images: (p.images || []).map(url).filter(Boolean),
+          price: p.tiers || p.sizes ? null : p.price,
+          sizes: p.sizes || null,
+          quantity_tiers: p.tiers || null,
+          sort_order: (i + 1) * 10
+        }))
+      });
+
+      if (!state.reviews.length && (data.reviews || []).length) {
+        status.textContent = 'حفظ آراء العملاء...';
+        await rest('POST', 'review_images', {
+          body: data.reviews.map((k, i) => ({ url: url(k), sort_order: (i + 1) * 10 }))
+        });
+      }
+
+      await loadAll();
+      renderCollections();
+      renderProducts();
+      renderReviews();
+      status.textContent = `تم الاستيراد: ${data.collections.length} كوليكشن، ${data.products.length} منتج، ${keys.length} صورة.`;
+      toast('تم الاستيراد ✓');
+    } catch (err) {
+      status.textContent = `وقف الاستيراد: ${err.message}. تقدر تشغّله تاني.`;
+      fail(err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   /* ---------- events ---------- */
 
   const actions = {
@@ -717,7 +789,8 @@
     'shipping-remove': (el) => { shippingDraft.splice(Number(el.dataset.index), 1); renderShipping(); },
     'shipping-save': saveShipping,
     'review-remove': (el) => removeReview(el.dataset.id),
-    'settings-save': saveSettings
+    'settings-save': saveSettings,
+    'import-start': runImport
   };
 
   document.addEventListener('click', (e) => {
@@ -771,6 +844,20 @@
     const files = Array.from(e.target.files);
     e.target.value = '';
     addReviewImages(files);
+  });
+
+  $('importFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      importData = JSON.parse(await file.text());
+      if (!Array.isArray(importData.collections) || !Array.isArray(importData.products)) throw new Error('الملف مش بصيغة صحيحة');
+      $('importFileName').textContent = `${file.name} (${importData.collections.length} كوليكشن، ${importData.products.length} منتج)`;
+    } catch (err) {
+      importData = null;
+      fail(err);
+    }
   });
 
   $('loginForm').addEventListener('submit', async (e) => {
