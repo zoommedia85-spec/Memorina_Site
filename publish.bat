@@ -24,6 +24,28 @@ echo [2/5] Setting the repository address...
 git remote remove origin >nul 2>&1
 git remote add origin https://github.com/zoommedia85-spec/Memorina_Site.git
 
+echo [2b] Creating Cloudflare deploy settings...
+(
+echo {
+echo   "name": "memorina-site",
+echo   "compatibility_date": "2025-06-01",
+echo   "assets": {
+echo     "directory": "./"
+echo   }
+echo }
+)> wrangler.jsonc
+(
+echo wrangler.jsonc
+echo .assetsignore
+echo .gitignore
+echo .git
+echo node_modules
+echo README.md
+echo supabase
+echo import
+echo *.bat
+)> .assetsignore
+
 echo [3/5] Adding files...
 git add .
 
