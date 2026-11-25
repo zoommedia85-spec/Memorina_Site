@@ -762,6 +762,87 @@
     }
   }
 
+  /* ---------- storage cleanup ---------- */
+
+  const MEDIA_MARKER = '/storage/v1/object/public/media/';
+  const MIN_AGE_MS = 60 * 60 * 1000;
+
+  async function listMediaFiles() {
+    const files = [];
+    const walk = async (prefix) => {
+      let offset = 0;
+      for (;;) {
+        const token = await freshToken();
+        const res = await fetch(`${BASE}/storage/v1/object/list/media`, {
+          method: 'POST',
+          headers: { apikey: CONFIG.anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prefix, limit: 100, offset, sortBy: { column: 'name', order: 'asc' } })
+        });
+        if (!res.ok) throw new Error('مقدرناش نقرا قائمة الصور');
+        const items = await res.json();
+        for (const item of items) {
+          const path = prefix ? `${prefix}/${item.name}` : item.name;
+          if (item.id === null) await walk(path);
+          else files.push({ path, size: (item.metadata && item.metadata.size) || 0, created: Date.parse(item.created_at) || 0 });
+        }
+        if (items.length < 100) break;
+        offset += 100;
+      }
+    };
+    await walk('');
+    return files;
+  }
+
+  async function cleanupImages() {
+    const status = $('cleanupStatus');
+    const btn = $('cleanupBtn');
+    btn.disabled = true;
+    try {
+      status.textContent = 'بنفحص الصور...';
+      await loadAll();
+      const used = new Set();
+      const mark = (u) => {
+        const i = typeof u === 'string' ? u.indexOf(MEDIA_MARKER) : -1;
+        if (i !== -1) used.add(u.slice(i + MEDIA_MARKER.length));
+      };
+      state.collections.forEach((c) => mark(c.cover_url));
+      state.products.forEach((p) => (p.images || []).forEach(mark));
+      state.reviews.forEach((r) => mark(r.url));
+
+      const files = await listMediaFiles();
+      const unused = files.filter((f) => !used.has(f.path) && Date.now() - f.created > MIN_AGE_MS);
+      if (!unused.length) {
+        status.textContent = `مفيش صور زيادة. (${files.length} صورة كلها مستخدمة)`;
+        return;
+      }
+      const mb = (unused.reduce((n, f) => n + f.size, 0) / 1048576).toFixed(1);
+      if (!confirm(`فيه ${unused.length} صورة مش مستخدمة (حوالي ${mb} ميجا) من أصل ${files.length}. تمسحها؟`)) {
+        status.textContent = 'اتلغى، مفيش حاجة اتمسحت.';
+        return;
+      }
+      let removed = 0;
+      for (let i = 0; i < unused.length; i += 50) {
+        status.textContent = `بنمسح ${Math.min(i + 50, unused.length)} من ${unused.length}...`;
+        const token = await freshToken();
+        const res = await fetch(`${BASE}/storage/v1/object/media`, {
+          method: 'DELETE',
+          headers: { apikey: CONFIG.anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prefixes: unused.slice(i, i + 50).map((f) => f.path) })
+        });
+        if (!res.ok) throw new Error('فشل مسح الصور');
+        const done = await res.json().catch(() => []);
+        removed += Array.isArray(done) ? done.length : 0;
+      }
+      status.textContent = `تم مسح ${removed} صورة (حوالي ${mb} ميجا).`;
+      toast('تم التنظيف ✓');
+    } catch (err) {
+      status.textContent = `وقف التنظيف: ${err.message}`;
+      fail(err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   /* ---------- events ---------- */
 
   const actions = {
@@ -790,7 +871,8 @@
     'shipping-save': saveShipping,
     'review-remove': (el) => removeReview(el.dataset.id),
     'settings-save': saveSettings,
-    'import-start': runImport
+    'import-start': runImport,
+    'cleanup-images': cleanupImages
   };
 
   document.addEventListener('click', (e) => {
