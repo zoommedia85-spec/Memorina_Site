@@ -111,17 +111,19 @@
 
   /* ---------- collections and products ---------- */
 
-  function renderCollections() {
-    const grid = $('collectionsGrid');
-    if (!catalog.collections.length) {
-      grid.innerHTML = '<p class="cart-empty">المنتجات هتتضاف قريب 🤍</p>';
-      return;
-    }
-    grid.innerHTML = catalog.collections.map((c) => `
+  function ribbonHtml(ribbon) {
+    if (!ribbon || !ribbon.text) return '';
+    const color = RIBBON_COLORS.includes(ribbon.color) ? ribbon.color : 'coral';
+    return `<span class="product-ribbon ribbon-${color}">${esc(ribbon.text)}</span>`;
+  }
+
+  function collectionCard(c) {
+    return `
       <div class="product-card collection-card" data-action="open-collection" data-id="${esc(c.id)}">
         <div class="product-photo">
+          ${ribbonHtml(c.ribbon)}
           ${isStorageUrl(c.cover)
-            ? `<img src="${esc(c.cover)}" alt="${esc(c.name)}" loading="lazy">`
+            ? `<img src="${esc(c.cover)}" alt="${esc(c.name)}" loading="lazy" decoding="async">`
             : `${ICONS[c.icon] || ICONS.gift}<span class="placeholder-note">حطوا صورة الغلاف هنا</span>`}
         </div>
         <div class="product-info">
@@ -129,8 +131,16 @@
           <p>${esc(c.desc)}</p>
           <span class="order-btn" style="margin-top:auto;">تصفح المنتجات</span>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+  }
+
+  function renderCollections() {
+    const grid = $('collectionsGrid');
+    if (!catalog.collections.length) {
+      grid.innerHTML = '<p class="cart-empty">المنتجات هتتضاف قريب 🤍</p>';
+      return;
+    }
+    grid.innerHTML = catalog.collections.map(collectionCard).join('');
   }
 
   function renderNav() {
@@ -154,7 +164,7 @@
   function renderReviews() {
     const urls = catalog.reviews.filter(isStorageUrl);
     $('reviewsWrap').innerHTML = urls.length ? urls.map((u) => `
-      <div class="review-card" data-action="zoom"><img src="${esc(u)}" alt="رأي عميل" loading="lazy"></div>
+      <div class="review-card" data-action="zoom"><img src="${esc(u)}" alt="رأي عميل" loading="lazy" decoding="async"></div>
     `).join('') : '<div class="review-card">حطي صور آراء العملاء هنا<br>(1080×1350 بكسل)</div>';
   }
 
@@ -162,9 +172,7 @@
     const images = (p.images || []).filter(isStorageUrl);
     const hasSizes = p.sizes && p.sizes.length;
     const hasTiers = p.tiers && p.tiers.length;
-    const ribbonColor = p.ribbon && RIBBON_COLORS.includes(p.ribbon.color) ? p.ribbon.color : 'coral';
-    const ribbon = p.ribbon && p.ribbon.text
-      ? `<span class="product-ribbon ribbon-${ribbonColor}">${esc(p.ribbon.text)}</span>` : '';
+    const ribbon = ribbonHtml(p.ribbon);
 
     const sizeButtons = hasSizes ? `
       <div class="size-select">
@@ -199,7 +207,7 @@
         <div class="product-photo" data-action="zoom">
           ${ribbon}
           ${images[0]
-            ? `<img src="${esc(images[0])}" alt="${esc(p.name)}" loading="lazy">`
+            ? `<img src="${esc(images[0])}" alt="${esc(p.name)}" loading="lazy" decoding="async">`
             : `${ICONS[p.icon] || ICONS.gift}<span class="placeholder-note">حطوا صورة المنتج هنا</span>`}
         </div>
         ${images.length > 1 ? `
@@ -259,10 +267,54 @@
     $('collectionOverlay').classList.add('open');
   }
 
-  function openLightbox(src) {
-    if (!src) return;
-    $('lightboxImg').src = src;
+  let gallery = { list: [], index: 0 };
+
+  function showLightbox() {
+    const { list, index } = gallery;
+    $('lightboxImg').src = list[index];
+    const multi = list.length > 1;
+    $('lbPrev').hidden = !multi;
+    $('lbNext').hidden = !multi;
+    $('lightboxCount').hidden = !multi;
+    $('lightboxCount').textContent = `${index + 1} / ${list.length}`;
+    if (multi) {
+      [1, -1].forEach((d) => { new Image().src = list[(index + d + list.length) % list.length]; });
+    }
+  }
+
+  function openLightbox(list, index = 0) {
+    const urls = list.filter(isStorageUrl);
+    if (!urls.length) return;
+    gallery = { list: urls, index: Math.min(Math.max(index, 0), urls.length - 1) };
+    showLightbox();
     $('lightboxOverlay').classList.add('open');
+  }
+
+  function stepLightbox(delta) {
+    const n = gallery.list.length;
+    if (n < 2) return;
+    gallery.index = (gallery.index + delta + n) % n;
+    showLightbox();
+  }
+
+  const lightboxOpen = () => $('lightboxOverlay').classList.contains('open');
+
+  function zoomFrom(el) {
+    if (el.classList.contains('review-card')) {
+      const imgs = Array.from($('reviewsWrap').querySelectorAll('.review-card img'));
+      const own = el.querySelector('img');
+      if (own) openLightbox(imgs.map((i) => i.src), imgs.indexOf(own));
+      return;
+    }
+    const card = el.closest('.product-card');
+    const p = card && productById(card.dataset.pid);
+    if (p) {
+      const thumbs = Array.from(card.querySelectorAll('.thumb'));
+      openLightbox(p.images || [], Math.max(0, thumbs.findIndex((t) => t.classList.contains('active'))));
+      return;
+    }
+    const img = el.querySelector('img');
+    if (img) openLightbox([img.src], 0);
   }
 
   /* ---------- tier inputs ---------- */
@@ -589,13 +641,14 @@
     const results = $('searchResults');
     const q = query.trim().toLowerCase();
     if (!q) {
-      results.innerHTML = '<p class="cart-empty">اكتب كلمة للبحث عن أي منتج بالاسم أو الوصف</p>';
+      results.innerHTML = '<p class="cart-empty">اكتب كلمة للبحث عن أي منتج أو كوليكشن بالاسم أو الوصف</p>';
       return;
     }
-    const matches = catalog.products.filter((p) =>
-      p.name.toLowerCase().includes(q) || (p.desc || '').toLowerCase().includes(q));
-    results.innerHTML = matches.length
-      ? matches.map((p) => productCard(p, 'search')).join('')
+    const has = (text) => String(text || '').toLowerCase().includes(q);
+    const collections = catalog.collections.filter((c) => has(c.name) || has(c.desc));
+    const products = catalog.products.filter((p) => has(p.name) || has(p.desc));
+    results.innerHTML = collections.length || products.length
+      ? collections.map(collectionCard).join('') + products.map((p) => productCard(p, 'search')).join('')
       : `<p class="cart-empty">مفيش نتائج مطابقة لـ "${esc(query)}"</p>`;
   }
 
@@ -610,11 +663,23 @@
     $('seeMoreReviewsBtn').href = safeHttps(catalog.settings.reviewsLink) || '#';
   }
 
+  // move to the neighbouring review card (wraps around at the ends)
   function scrollReviews(direction) {
     const wrap = $('reviewsWrap');
-    const card = wrap.querySelector('.review-card');
-    if (!card) return;
-    wrap.scrollBy({ left: direction * (card.getBoundingClientRect().width + 16), behavior: 'smooth' });
+    const cards = Array.from(wrap.querySelectorAll('.review-card'));
+    if (cards.length < 2) return;
+    const box = wrap.getBoundingClientRect();
+    const middle = box.left + box.width / 2;
+    const centers = cards.map((c) => {
+      const r = c.getBoundingClientRect();
+      return r.left + r.width / 2;
+    });
+    let current = 0;
+    centers.forEach((c, i) => {
+      if (Math.abs(c - middle) < Math.abs(centers[current] - middle)) current = i;
+    });
+    const target = (current + direction + cards.length) % cards.length;
+    wrap.scrollBy({ left: centers[target] - middle, behavior: 'smooth' });
   }
 
   function fitHeroTitle() {
@@ -633,7 +698,10 @@
   }
 
   const actions = {
-    'open-collection': (el) => openCollection(el.dataset.id),
+    'open-collection': (el) => {
+      $('searchOverlay').classList.remove('open');
+      openCollection(el.dataset.id);
+    },
     'nav-collection': (el, e) => {
       e.preventDefault();
       $('navMenu').classList.remove('open');
@@ -641,10 +709,10 @@
     },
     'close-collection': () => $('collectionOverlay').classList.remove('open'),
     'close-lightbox': () => $('lightboxOverlay').classList.remove('open'),
-    zoom: (el) => {
-      const img = el.querySelector('img');
-      if (img) openLightbox(img.src);
-    },
+    'lb-close': () => $('lightboxOverlay').classList.remove('open'),
+    'lb-prev': () => stepLightbox(-1),
+    'lb-next': () => stepLightbox(1),
+    zoom: zoomFrom,
     thumb: (el) => {
       const card = el.closest('.product-card');
       const photo = card.querySelector('.product-photo');
@@ -689,10 +757,23 @@
   });
 
   document.addEventListener('keydown', (e) => {
+    if (lightboxOpen() && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      stepLightbox(e.key === 'ArrowLeft' ? 1 : -1);
+      return;
+    }
     if (e.key !== 'Escape') return;
     ['collectionOverlay', 'searchOverlay', 'helpOverlay', 'lightboxOverlay'].forEach((id) => $(id).classList.remove('open'));
     closeCart();
   });
+
+  let touchX = null;
+  $('lightboxOverlay').addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  $('lightboxOverlay').addEventListener('touchend', (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 50) stepLightbox(dx > 0 ? 1 : -1);
+  }, { passive: true });
 
   $('navToggle').addEventListener('click', () => $('navMenu').classList.toggle('open'));
   $('navMenu').addEventListener('click', (e) => {
@@ -714,22 +795,24 @@
     if (e.target.id === 'searchOverlay') $('searchOverlay').classList.remove('open');
   });
   $('searchInput').addEventListener('input', (e) => performSearch(e.target.value));
-  $('reviewPrevBtn').addEventListener('click', () => scrollReviews(1));
-  $('reviewNextBtn').addEventListener('click', () => scrollReviews(-1));
+  $('reviewPrevBtn').addEventListener('click', () => scrollReviews(-1));
+  $('reviewNextBtn').addEventListener('click', () => scrollReviews(1));
   $('cartBtn').addEventListener('click', openCart);
   $('cartClose').addEventListener('click', closeCart);
   $('cartOverlay').addEventListener('click', closeCart);
   $('custGovernorate').addEventListener('change', renderCart);
   $('cartCheckout').addEventListener('click', checkout);
 
-  async function start() {
-    $('collectionsGrid').innerHTML = '<p class="cart-empty">جاري تحميل المنتجات...</p>';
-    try {
-      await loadCatalog();
-    } catch {
-      $('collectionsGrid').innerHTML = '<div class="cart-empty">مقدرناش نحمّل المنتجات دلوقتي.<br><button type="button" class="retry-btn" data-action="reload">حاول تاني</button></div>';
-      return;
-    }
+  const CATALOG_KEY = 'memorina_catalog';
+
+  function setCatalog(data) {
+    catalog = {
+      settings: data.settings || {}, collections: data.collections || [], products: data.products || [],
+      shipping: data.shipping || [], reviews: data.reviews || []
+    };
+  }
+
+  function applyCatalog() {
     renderCollections();
     renderNav();
     renderReviews();
@@ -740,10 +823,40 @@
     renderCart();
   }
 
+  async function start() {
+    let cached = null;
+    try { cached = sessionStorage.getItem(CATALOG_KEY); } catch { /* ignore */ }
+    if (cached) {
+      try {
+        setCatalog(JSON.parse(cached));
+        applyCatalog();
+      } catch { cached = null; }
+    }
+    if (!cached) $('collectionsGrid').innerHTML = '<p class="cart-empty">جاري تحميل المنتجات...</p>';
+
+    try {
+      const data = await rpc('get_catalog');
+      const fresh = JSON.stringify(data);
+      try { sessionStorage.setItem(CATALOG_KEY, fresh); } catch { /* storage full or blocked */ }
+      if (fresh !== cached) {
+        setCatalog(data);
+        applyCatalog();
+      }
+    } catch {
+      if (!cached) {
+        $('collectionsGrid').innerHTML = '<div class="cart-empty">مقدرناش نحمّل المنتجات دلوقتي.<br><button type="button" class="retry-btn" data-action="reload">حاول تاني</button></div>';
+      }
+    }
+  }
+
   loadCart();
   renderCart();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeroTitle);
   fitHeroTitle();
-  window.addEventListener('resize', fitHeroTitle);
+  let resizeFrame = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(fitHeroTitle);
+  });
   start();
 })();

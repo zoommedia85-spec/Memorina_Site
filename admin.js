@@ -60,6 +60,7 @@
       expires_at: Math.floor(Date.now() / 1000) + (data.expires_in || 3600)
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    armIdleTimer();
   }
 
   async function freshToken() {
@@ -71,7 +72,21 @@
     return session.access_token;
   }
 
+  // sign out automatically after 30 minutes without activity
+  const IDLE_LIMIT_MS = 30 * 60 * 1000;
+  let idleTimer = 0;
+
+  function armIdleTimer() {
+    clearTimeout(idleTimer);
+    if (!session) return;
+    idleTimer = setTimeout(async () => {
+      await logout();
+      $('loginError').textContent = 'اتسجّل خروجك تلقائيًا بعد فترة من عدم النشاط.';
+    }, IDLE_LIMIT_MS);
+  }
+
   async function logout() {
+    clearTimeout(idleTimer);
     const token = session && session.access_token;
     session = null;
     sessionStorage.removeItem(SESSION_KEY);
@@ -352,7 +367,7 @@
     $('collectionsList').innerHTML = state.collections.length ? state.collections.map((c) => `
       <div class="item-row">
         <div class="info">
-          <b>${esc(c.name)}${c.hide_prices ? '<span class="tag">الأسعار مخفية</span>' : ''}${c.is_active ? '' : '<span class="tag off">مخفي</span>'}</b>
+          <b>${esc(c.name)}${c.ribbon_text ? `<span class="tag">${esc(c.ribbon_text)}</span>` : ''}${c.hide_prices ? '<span class="tag">الأسعار مخفية</span>' : ''}${c.is_active ? '' : '<span class="tag off">مخفي</span>'}</b>
           <span>${esc(c.description)}</span>
         </div>
         <div class="actions">
@@ -372,12 +387,14 @@
   function openCollectionEditor(id) {
     editingCollection = id;
     const c = id ? state.collections.find((x) => x.id === id)
-      : { name: '', description: '', icon: 'frame', cover_url: '', hide_prices: false, is_active: true };
+      : { name: '', description: '', icon: 'frame', cover_url: '', hide_prices: false, ribbon_text: '', ribbon_color: 'coral', is_active: true };
     $('collectionEditorTitle').textContent = id ? 'تعديل كوليكشن' : 'كوليكشن جديد';
     $('colName').value = c.name;
     $('colDesc').value = c.description;
     $('colIcon').value = c.icon;
     $('colHidePrices').checked = c.hide_prices;
+    $('colRibbonText').value = c.ribbon_text || '';
+    $('colRibbonColor').value = c.ribbon_color || 'coral';
     $('colActive').checked = c.is_active;
     collectionCover = c.cover_url || '';
     renderCover();
@@ -396,6 +413,8 @@
       icon: $('colIcon').value,
       cover_url: collectionCover,
       hide_prices: $('colHidePrices').checked,
+      ribbon_text: $('colRibbonText').value.trim(),
+      ribbon_color: $('colRibbonColor').value,
       is_active: $('colActive').checked
     };
     try {
@@ -968,6 +987,7 @@
   mfaSubmit('mfaEnrollForm', 'mfaEnrollCode');
 
   $('logoutBtn').addEventListener('click', logout);
+  ['click', 'keydown', 'pointerdown', 'touchstart'].forEach((ev) => document.addEventListener(ev, armIdleTimer, { passive: true }));
 
   (async () => {
     if (!BASE || BASE.includes('YOUR-PROJECT')) {
@@ -976,7 +996,7 @@
     }
     try {
       const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
-      if (saved && saved.access_token) { session = saved; await afterLogin(); }
+      if (saved && saved.access_token) { session = saved; armIdleTimer(); await afterLogin(); }
     } catch { session = null; showView('login'); }
   })();
 })();
