@@ -3,70 +3,91 @@ setlocal
 cd /d "%~dp0"
 
 echo ==================================================
-echo  Memorina - publish site to GitHub
+echo  Publish this folder to GitHub
 echo ==================================================
-echo.
 echo Folder: %CD%
 echo.
 
 where git >nul 2>&1
-if errorlevel 1 (
-  echo Git is not installed or not in PATH.
-  pause
-  exit /b 1
+if errorlevel 1 goto nogit
+
+if not exist ".git" (
+  git init
+  git branch -M main
 )
 
-echo [1/5] Removing the saved GitHub login...
-cmdkey /delete:git:https://github.com >nul 2>&1
-cmdkey /delete:LegacyGeneric:target=git:https://github.com >nul 2>&1
-
-echo [2/5] Setting the repository address...
-git remote remove origin >nul 2>&1
-git remote add origin https://github.com/zoommedia85-spec/Memorina_Site.git
-
-echo [2b] Creating Cloudflare deploy settings...
-(
-echo {
-echo   "name": "memorina-site",
-echo   "compatibility_date": "2025-06-01",
-echo   "assets": {
-echo     "directory": "./"
-echo   }
-echo }
-)> wrangler.jsonc
-(
-echo wrangler.jsonc
-echo .assetsignore
-echo .gitignore
-echo .git
-echo node_modules
-echo README.md
-echo supabase
-echo import
-echo *.bat
-)> .assetsignore
-
-echo [3/5] Adding files...
-git add .
-
-echo [4/5] Saving changes...
-git commit -m "update site"
+git remote get-url origin >nul 2>&1
+if errorlevel 1 (
+  set /p REPO=Paste the GitHub repository address and press Enter: 
+  git remote add origin %REPO%
+)
 git branch -M main
 
-echo.
-echo [5/5] Uploading...
-echo A sign-in window will open. Sign in with the account:  zoommedia85-spec
-echo (If your browser is already signed in with another GitHub account, sign out first or use a private window.)
-echo.
+rem deploy settings for the Cloudflare worker (only for the Memorina site folder)
+if exist "admin.html" if exist "app.js" if not exist "wrangler.jsonc" (
+  (
+  echo {
+  echo   "name": "memorina-site",
+  echo   "compatibility_date": "2025-06-01",
+  echo   "assets": {
+  echo     "directory": "./"
+  echo   }
+  echo }
+  )> wrangler.jsonc
+  (
+  echo wrangler.jsonc
+  echo .assetsignore
+  echo .gitignore
+  echo .git
+  echo node_modules
+  echo README.md
+  echo supabase
+  echo import
+  echo *.bat
+  )> .assetsignore
+)
+
+echo [1/4] Checking what is already on GitHub...
+git rebase --abort >nul 2>&1
+git fetch origin main
+if errorlevel 1 goto nofetch
+goto fetched
+:nofetch
+echo (nothing on GitHub yet, or no access - continuing)
+:fetched
+
+rem keep the real keys that were saved in config.js on GitHub
+if exist "config.js" (
+  findstr /c:"YOUR-" config.js >nul 2>&1
+  if not errorlevel 1 git checkout origin/main -- config.js >nul 2>&1
+)
+
+echo [2/4] Saving your changes...
+git add .
+git commit -m "update site"
+
+echo [3/4] Merging with GitHub...
+git pull --rebase --autostash -X theirs origin main
+if errorlevel 1 goto failed
+
+echo [4/4] Uploading...
 git push -u origin main
+if errorlevel 1 goto failed
 
 echo.
-if errorlevel 1 (
-  echo ================ FAILED ================
-  echo Take a photo of this window and send it.
-) else (
-  echo ================ DONE ================
-  echo The site is uploaded. Cloudflare will publish it in about a minute.
-)
+echo ================ DONE ================
+echo Uploaded. The site updates in about a minute.
+goto end
+
+:nogit
+echo Git is not installed or not in PATH.
+goto end
+
+:failed
+echo.
+echo ================ FAILED ================
+echo Take a photo of this window and send it.
+
+:end
 echo.
 pause

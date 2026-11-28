@@ -31,7 +31,10 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
 
-  const fail = (err) => toast(`❌ ${err && err.message ? err.message : 'حصلت مشكلة'}`);
+  const fail = (err) => {
+    const msg = err && err.message ? err.message : 'حصلت مشكلة';
+    toast(msg.includes('ribbon_') ? '❌ شغّل ملف update-collections-ribbon.sql في Supabase الأول' : `❌ ${msg}`);
+  };
 
   function jwtPayload(token) {
     const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -393,8 +396,8 @@
     $('colDesc').value = c.description;
     $('colIcon').value = c.icon;
     $('colHidePrices').checked = c.hide_prices;
-    $('colRibbonText').value = c.ribbon_text || '';
-    $('colRibbonColor').value = c.ribbon_color || 'coral';
+    if ($('colRibbonText')) $('colRibbonText').value = c.ribbon_text || '';
+    if ($('colRibbonColor')) $('colRibbonColor').value = c.ribbon_color || 'coral';
     $('colActive').checked = c.is_active;
     collectionCover = c.cover_url || '';
     renderCover();
@@ -413,10 +416,12 @@
       icon: $('colIcon').value,
       cover_url: collectionCover,
       hide_prices: $('colHidePrices').checked,
-      ribbon_text: $('colRibbonText').value.trim(),
-      ribbon_color: $('colRibbonColor').value,
       is_active: $('colActive').checked
     };
+    if ($('colRibbonText') && $('colRibbonColor')) {
+      body.ribbon_text = $('colRibbonText').value.trim();
+      body.ribbon_color = $('colRibbonColor').value;
+    }
     try {
       if (editingCollection) {
         const row = await patchOne('collections', 'id', editingCollection, body);
